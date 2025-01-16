@@ -13,21 +13,9 @@ void helpfunction()
 {
     yInfo() << "USAGE:";
     yInfo() << "--file <string> logfile path";
-    yInfo() << "--out <string> output video [~/Downloads/events.mp4]";
-    yInfo() << "--timestamps <string> input timestamps filepath [optional]";
-    yInfo() << "--fps <int> frames per second of output video [240]";
-    yInfo() << "--rate <double> speed-up/slow-down factor [1.0]";
     yInfo() << "--height <int> video height [720]";
     yInfo() << "--width <int> video width [1280]";
-    yInfo() << "--vis <bool> show conversion process [false]";
-    yInfo() << "METHOD: iso [default]";
-    yInfo() << "--window <double> seconds of window length [0.5]";
-    yInfo() << "METHOD: --tw";
-    yInfo() << "--window <double> seconds of window length [0.01]";
-    yInfo() << "METHOD: --scarf";
-    yInfo() << "--block_size <int> array dimension [14]";
-    yInfo() << "--alpha <double> events accumulation factor [1.0]";
-    yInfo() << "--C <double> intensity [0.3]";
+    yInfo() << "--block_size <int> EROS and HARRIS block size [7]";
 }
 
 class corner_detector
@@ -61,25 +49,29 @@ private:
         {
             //events image
             cv::cvtColor(imgV, imgC3, cv::COLOR_GRAY2BGR);
+            cv::putText(imgC3, "Events", {10, 10}, cv::FONT_HERSHEY_PLAIN, 0.5, {100, 100, 100});
             cv::resize(imgC3, imgVGA({0, 0, 320, 240}), {320, 240});
             imgV = cv::Vec3b(255, 255, 255);
 
             //eros image
             img8U = 255 - eros.getSurface();
             cv::cvtColor(img8U, imgC3, cv::COLOR_GRAY2BGR);
+            cv::putText(imgC3, "EROS", {10, 10}, cv::FONT_HERSHEY_PLAIN, 0.5, {100, 100, 100});
             cv::resize(imgC3, imgVGA({0, 240, 320, 240}), {320, 240});
 
             //LUT image
             cv::threshold(LUT, imgF32, 0, 0, cv::THRESH_TOZERO);
             imgF32.convertTo(img8U, CV_8U, 10*255.0/max_corner_score);
             cv::cvtColor(img8U, imgC3, cv::COLOR_GRAY2BGR);
+            cv::putText(imgC3, "LUT", {10, 10}, cv::FONT_HERSHEY_PLAIN, 0.5, {100, 100, 100});
             cv::resize(imgC3, imgVGA({320, 240, 320, 240}), {320, 240});
 
             //corner location image
-            cv::threshold(img8U, img8U, 100, 255, cv::THRESH_BINARY_INV);
+            cv::threshold(img8U, img8U, 127, 255, cv::THRESH_BINARY_INV);
             cv::GaussianBlur(img8U, img8U, {5, 5}, -1);
             imgCORN = 0.9*imgCORN + 0.1*img8U;
             cv::cvtColor(imgCORN, imgC3, cv::COLOR_GRAY2BGR);
+            cv::putText(imgC3, "Corner Locations", {10, 10}, cv::FONT_HERSHEY_PLAIN, 0.5, {100, 100, 100});
             cv::resize(imgC3, imgVGA({320, 0, 320, 240}), {320, 240});
 
 
@@ -140,8 +132,6 @@ int main(int argc, char* argv[])
     }
     std::string file_path = rf.find("file").asString();
 
-    
-    int fps = rf.check("fps", Value(0)).asInt32();
     cv::Size res = {rf.check("width", Value(1280)).asInt32(), 
                     rf.check("height", Value(720)).asInt32()};
     int block_size = rf.check("block_size", Value(7)).asInt32();
@@ -164,6 +154,11 @@ int main(int argc, char* argv[])
         for(auto &v : loader) {
             cd.eros.update(v.x, v.y);
             cd.imgV.at<unsigned char>(v.y, v.x) = 0;
+            //to do event-by-event corner detection
+            // double event_corner_score = cd.LUT.at<float>(v.y, v.x);
+            // if(event_corner_score > cd.max_corner_score*0.05) {
+            //     //output as corner
+            // }
         }
 
     }
